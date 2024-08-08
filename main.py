@@ -1,5 +1,8 @@
+#!/usr/bin/env python3
+
 import argparse
 import logging
+import os
 import time
 from xmlrpc.client import ServerProxy
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -14,18 +17,22 @@ parser.add_argument('--metrics-path', default='/metrics', help='Path under which
 parser.add_argument('--version', action='store_true', help='Displays application version')
 args = parser.parse_args()
 
+# SUPERVISORD_EXPORTER_SUPERVISORD_URL can override --supervisord-url
+if os.environ.get('SUPERVISORD_EXPORTER_SUPERVISORD_URL'):
+    args.supervisord_url = os.environ.get('SUPERVISORD_EXPORTER_SUPERVISORD_URL')
+
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics definition
 processes_metric = Gauge(
-    'supervisor_process_info', 
+    'supervisor_process_info',
     'Supervisor process information', [
         'pid',
-        'name', 
-        'group', 
-        'state',    
+        'name',
+        'group',
+        'state',
         'start_time',
         'stop_time',
         'now_time',
@@ -84,10 +91,10 @@ def fetch_supervisor_process_info(supervisord_url):
 
             value = 0 if state != 'RUNNING' else 1
             processes_metric.labels(
-                pid=pid, 
-                name=name, 
-                group=group, 
-                state=state, 
+                pid=pid,
+                name=name,
+                group=group,
+                state=state,
                 start_time=str(start_time),
                 stop_time=str(stop_time),
                 now_time=str(now_time),
@@ -125,13 +132,10 @@ def main():
     if args.version:
         print("Supervisor Exporter v0.1")
         return
-#    if args.listen_address.split(':')[0] != 'localhost':
-#        print("Working on it. Contact ganish.n_int@external.swiggy.in in meantime.")
-#        return
 
     try:
         # Start HTTP server
-        with HTTPServer(('', int(args.listen_address.split(':')[1])), RequestHandler) as server:
+        with HTTPServer((args.listen_address.split(':')[0], int(args.listen_address.split(':')[1])), RequestHandler) as server:
             logger.info(f"Listening on {args.listen_address}")
             server.serve_forever()
     except KeyboardInterrupt:
