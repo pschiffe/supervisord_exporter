@@ -22,7 +22,7 @@ if os.environ.get('SUPERVISORD_EXPORTER_SUPERVISORD_URL'):
     args.supervisord_url = os.environ.get('SUPERVISORD_EXPORTER_SUPERVISORD_URL')
 
 # Logging setup
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics definition
