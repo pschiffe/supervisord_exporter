@@ -22,7 +22,7 @@ if os.environ.get('SUPERVISORD_EXPORTER_SUPERVISORD_URL'):
     args.supervisord_url = os.environ.get('SUPERVISORD_EXPORTER_SUPERVISORD_URL')
 
 # Logging setup
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics definition
@@ -126,6 +126,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(data)
         else:
             self.send_error(404, 'Not Found')
+    def log_message(self, format, *args):
+        pass
 
 # Main function
 def main():
