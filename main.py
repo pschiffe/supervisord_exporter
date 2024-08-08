@@ -127,7 +127,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404, 'Not Found')
     def log_message(self, format, *args):
-        pass
+        return
 
 # Main function
 def main():
