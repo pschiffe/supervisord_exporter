@@ -69,7 +69,7 @@ def fetch_supervisor_process_info(supervisord_url):
                 latest_info[key] = data
 
         # Clear the previous metric values
-        supervisor_processes_per_state.clear()
+        supervisor_processes_per_state._metrics = {}
 
         # Count the number of processes in each state
         for state, codes in supervisor_process_states.items():
@@ -80,7 +80,7 @@ def fetch_supervisor_process_info(supervisord_url):
     except Exception as e:
         logger.error(f"Error fetching Supervisor process info: {e}")
         supervisord_up.set(0)
-        supervisor_processes_per_state.clear()
+        supervisor_processes_per_state._metrics = {}
 
 # HTTP request handler
 class RequestHandler(BaseHTTPRequestHandler):
