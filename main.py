@@ -3,7 +3,6 @@
 import argparse
 import logging
 import os
-import time
 from xmlrpc.client import ServerProxy
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from prometheus_client import Gauge, generate_latest, CONTENT_TYPE_LATEST
@@ -26,21 +25,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics definition
-processes_metric = Gauge(
-    'supervisor_process_info',
-    'Supervisor process information', [
-        'pid',
-        'name',
-        'group',
-        'state',
-        'start_time',
-        'stop_time',
-        'now_time',
-        'description',
-        'exit_status'
-        ])
-supervisor_process_uptime = Gauge('supervisor_process_uptime', 'Uptime of Supervisor processes', ['name', 'group'])
 supervisord_up = Gauge('supervisord_up', 'Supervisord XML-RPC connection status (1 if up, 0 if down)')
+supervisor_processes_per_state = Gauge('supervisor_processes_per_state', 'Supervisor processes per state', ['state'])
+
+supervisor_process_states = {
+    'RUNNING': [10, 20, 40],
+    'STOPPED': [0],
+    'BACKOFF': [30],
+    'EXITED': [100],
+    'FATAL': [200],
+    'UNKNOWN': [1000],
+}
 
 # Fetch Supervisor process info
 def fetch_supervisor_process_info(supervisord_url):
@@ -74,43 +69,18 @@ def fetch_supervisor_process_info(supervisord_url):
                 latest_info[key] = data
 
         # Clear the previous metric values
-        processes_metric._metrics.clear()
-        supervisor_process_uptime._metrics.clear()
+        supervisor_processes_per_state.clear()
 
-        for data in latest_info.values():
-            pid = data['pid']
-            name = data['name']
-            group = data['group']
-            state = data['statename']
-            exit_status = data['exitstatus']
-            start_time = data['start']
-
-            stop_time = data['stop']
-            now_time = data['now']
-            description = data['description']
-
-            value = 0 if state != 'RUNNING' else 1
-            processes_metric.labels(
-                pid=pid,
-                name=name,
-                group=group,
-                state=state,
-                start_time=str(start_time),
-                stop_time=str(stop_time),
-                now_time=str(now_time),
-                description=description,
-                exit_status=str(exit_status)).set(value)
-
-            # Calculate uptime and set the supervisor_process_uptime metric
-            if value == 1:
-                uptime = time.time() - start_time
-                supervisor_process_uptime.labels(name=name, group=group).set(uptime)
+        # Count the number of processes in each state
+        for state, codes in supervisor_process_states.items():
+            for data in latest_info.values():
+                if data['state'] in codes:
+                    supervisor_processes_per_state.labels(state=state).inc()
 
     except Exception as e:
         logger.error(f"Error fetching Supervisor process info: {e}")
         supervisord_up.set(0)
-        processes_metric._metrics.clear()
-        supervisor_process_uptime._metrics.clear()
+        supervisor_processes_per_state.clear()
 
 # HTTP request handler
 class RequestHandler(BaseHTTPRequestHandler):
